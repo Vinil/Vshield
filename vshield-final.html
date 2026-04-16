@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VShield — Guardrail Layer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,200..800;1,9..40,200..800&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080a10;--bg2:#0c0e16;--sf:#11141e;--sf2:#161a28;
+  --w:#f0f2f8;--w80:rgba(240,242,248,.8);--w60:rgba(240,242,248,.6);
+  --w40:rgba(240,242,248,.4);--w20:rgba(240,242,248,.2);
+  --w08:rgba(240,242,248,.08);--w04:rgba(240,242,248,.04);
+  --cyan:#00d4ff;--violet:#6e56ff;--green:#00e68a;--orange:#ff7a45;
+  --red:#ff4d6a;--yellow:#ffd644;
+  --sans:'DM Sans',sans-serif;--mono:'IBM Plex Mono',monospace;
+}
+body{background:var(--bg);color:var(--w);font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.5;overflow:hidden;height:100vh}
+.shell{display:flex;height:100vh;overflow:hidden}
+.sb{width:220px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--w04);display:flex;flex-direction:column}
+.sb-logo{padding:18px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--w04)}
+.sb-logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--orange),#cc4420);display:grid;place-items:center}
+.sb-logo-icon svg{width:16px;height:16px;fill:var(--bg)}
+.sb-logo-text{font-weight:600;font-size:14px;letter-spacing:-.3px}.sb-logo-text span{color:var(--orange)}
+.sb-section{padding:16px 0}
+.sb-label{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--w20);padding:0 20px;margin-bottom:8px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:12.5px;color:var(--w40);cursor:pointer;border-left:2px solid transparent;transition:all .15s}
+.sb-item:hover{color:var(--w60);background:var(--w04)}
+.sb-item.active{color:var(--w);background:rgba(255,122,69,.04);border-left-color:var(--orange)}
+.sb-item svg{width:16px;height:16px;opacity:.5;flex-shrink:0}.sb-item.active svg{opacity:.9}
+.sb-badge{margin-left:auto;font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(255,77,106,.12);color:var(--red)}
+.sb-badge.g{background:rgba(0,230,138,.08);color:var(--green)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.tb{height:50px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--sf);border-bottom:1px solid var(--w04)}
+.tb-nav{display:flex;gap:0}
+.tb-nav a{font-size:12px;color:var(--w40);padding:16px 18px;border-bottom:2px solid transparent;text-decoration:none;transition:.2s}
+.tb-nav a.active{color:var(--w);border-bottom-color:var(--orange)}
+.tb-nav a:hover{color:var(--w60)}
+.tb-r{display:flex;align-items:center;gap:14px}
+.bell{width:34px;height:34px;border-radius:8px;background:var(--w04);display:grid;place-items:center;position:relative;cursor:pointer}
+.bell svg{width:16px;height:16px;stroke:var(--w40);fill:none;stroke-width:1.5}
+.bell-dot{position:absolute;top:7px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 6px rgba(255,77,106,.5)}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--red));display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--bg)}
+.content{flex:1;overflow-y:auto;padding:20px 24px 40px}
+.bc{font-family:var(--mono);font-size:10px;color:var(--w20);margin-bottom:14px}.bc b{color:var(--w40);font-weight:500}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.stat{background:var(--sf);border:1px solid var(--w04);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:.6}
+.stat.s1::before{background:linear-gradient(90deg,var(--orange),transparent)}
+.stat.s2::before{background:linear-gradient(90deg,var(--red),transparent)}
+.stat.s3::before{background:linear-gradient(90deg,var(--green),transparent)}
+.stat.s4::before{background:linear-gradient(90deg,var(--cyan),transparent)}
+.stat-label{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:1px;color:var(--w40);margin-bottom:4px}
+.stat-val{font-size:26px;font-weight:800;letter-spacing:-1.5px;line-height:1}
+.stat-unit{font-size:12px;color:var(--w40);font-weight:400}
+.stat-delta{font-family:var(--mono);font-size:9.5px;margin-top:4px;color:var(--green)}
+.stat-delta.bad{color:var(--red)}
+
+.panel{background:var(--sf);border:1px solid var(--w04);border-radius:10px;overflow:hidden;margin-bottom:14px}
+.panel-h{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--w04)}
+.panel-t{font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px;letter-spacing:-.1px}
+.panel-t svg{width:14px;height:14px;opacity:.5}
+.panel-a{font-family:var(--mono);font-size:9px;color:var(--orange);text-transform:uppercase;letter-spacing:1px;cursor:pointer}
+
+.grid-main{display:grid;grid-template-columns:1fr 380px;gap:14px;margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--w20);text-align:left;padding:7px 10px;border-bottom:1px solid var(--w04);font-weight:500}
+.tbl td{font-size:11.5px;color:var(--w60);padding:9px 10px;border-bottom:1px solid var(--w04)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.015)}
+.tag{font-family:var(--mono);font-size:8.5px;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px;font-weight:500}
+.tag-on{background:rgba(0,230,138,.08);color:var(--green)}
+.tag-off{background:rgba(255,77,106,.08);color:var(--red)}
+.sd{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
+.sd-g{background:var(--green);box-shadow:0 0 6px rgba(0,230,138,.4)}
+.sd-r{background:var(--red);box-shadow:0 0 6px rgba(255,77,106,.4)}
+.sd-y{background:var(--yellow);box-shadow:0 0 6px rgba(255,214,68,.4)}
+
+/* Agent cards */
+.ag-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 16px}
+.ag{background:var(--bg2);border:1px solid var(--w04);border-radius:8px;padding:12px;transition:border-color .2s}
+.ag:hover{border-color:var(--w08)}
+.ag-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.ag-name{font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:5px}
+.ag-type{font-family:var(--mono);font-size:8.5px;color:var(--w40);text-transform:uppercase;letter-spacing:1px}
+.ag-perms{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.ag-perm{font-family:var(--mono);font-size:7.5px;padding:2px 6px;border-radius:3px;border:1px solid var(--w04);color:var(--w40);letter-spacing:.3px}
+.ag-perm.granted{border-color:rgba(0,230,138,.15);color:var(--green);background:rgba(0,230,138,.04)}
+.ag-perm.denied{border-color:rgba(255,77,106,.15);color:var(--red);background:rgba(255,77,106,.04)}
+.ag-trust{display:flex;align-items:center;gap:4px;margin-top:8px;font-family:var(--mono);font-size:9px}
+.trust-bar{flex:1;height:3px;background:var(--w04);border-radius:2px;overflow:hidden}
+.trust-fill{height:100%;border-radius:2px}
+
+/* Log */
+.log{font-family:var(--mono);font-size:10.5px;padding:5px 0;border-bottom:1px solid var(--w04);display:flex;gap:10px;line-height:1.5}
+.log:last-child{border-bottom:none}
+.log-t{color:var(--w20);width:60px;flex-shrink:0}
+.log-l{width:44px;flex-shrink:0;font-size:8.5px;letter-spacing:.5px;text-transform:uppercase;padding-top:1px}
+.log-l.block{color:var(--red)}.log-l.allow{color:var(--green)}.log-l.warn{color:var(--yellow)}.log-l.audit{color:var(--cyan)}
+.log-m{flex:1;color:var(--w60)}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sb">
+    <div class="sb-logo">
+      <div class="sb-logo-icon"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
+      <div class="sb-logo-text">VShield<span>.ai</span></div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Enforcement</div>
+      <div class="sb-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>Guardrail Status</div>
+      <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>Policy Engine</div>
+      <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>Blocked Actions<span class="sb-badge">23</span></div>
+      <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>Identity Rules</div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Compliance</div>
+      <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>Audit Trail</div>
+      <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>Compliance Map</div>
+      <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>Reports</div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Agents</div>
+      <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>Agent Registry<span class="sb-badge g">18</span></div>
+      <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>Configuration</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="tb">
+      <div class="tb-nav">
+        <a href="#" class="active">Guardrails</a>
+        <a href="#">Policy Engine</a>
+        <a href="#">Identity</a>
+        <a href="#">Agent Scope</a>
+        <a href="#">Audit Log</a>
+        <a href="#">Governance</a>
+      </div>
+      <div class="tb-r">
+        <div class="bell"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg><div class="bell-dot"></div></div>
+        <div class="avatar">VV</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="bc">VShield / <b>Guardrail Status</b> — All policies enforcing</div>
+
+      <div class="stats">
+        <div class="stat s1"><div class="stat-label">Policies Active</div><div class="stat-val" style="color:var(--orange)">147</div><div class="stat-delta">All enforcing</div></div>
+        <div class="stat s2"><div class="stat-label">Blocked (24h)</div><div class="stat-val" style="color:var(--red)">23</div><div class="stat-delta bad">+4 from yesterday</div></div>
+        <div class="stat s3"><div class="stat-label">Governed Agents</div><div class="stat-val" style="color:var(--green)">18<span class="stat-unit">/18</span></div><div class="stat-delta">100% coverage</div></div>
+        <div class="stat s4"><div class="stat-label">Audit Events</div><div class="stat-val">52.4<span class="stat-unit">K</span></div><div class="stat-delta">All logged & indexed</div></div>
+      </div>
+
+      <!-- Main: Agent governance SVG + Policy table -->
+      <div class="grid-main">
+        <!-- Agent Governance Hierarchy -->
+        <div class="panel">
+          <div class="panel-h">
+            <div class="panel-t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>Agent Governance Hierarchy</div>
+            <div class="panel-a">Edit Policies →</div>
+          </div>
+          <div style="padding:12px">
+            <svg viewBox="0 0 600 280" style="width:100%;height:auto">
+              <defs>
+                <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                <linearGradient id="shieldG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff7a45"/><stop offset="100%" stop-color="#ff4d6a"/></linearGradient>
+              </defs>
+
+              <!-- Connection lines -->
+              <g stroke="rgba(240,242,248,.06)" stroke-width="1">
+                <!-- VShield to policy nodes -->
+                <line x1="300" y1="50" x2="100" y2="130"/><line x1="300" y1="50" x2="250" y2="130"/><line x1="300" y1="50" x2="400" y2="130"/><line x1="300" y1="50" x2="530" y2="130"/>
+                <!-- Policy nodes to agents -->
+                <line x1="100" y1="130" x2="60" y2="230" stroke="rgba(0,230,138,.1)"/>
+                <line x1="100" y1="130" x2="140" y2="230" stroke="rgba(0,230,138,.1)"/>
+                <line x1="250" y1="130" x2="220" y2="230" stroke="rgba(0,230,138,.1)"/>
+                <line x1="250" y1="130" x2="300" y2="230" stroke="rgba(0,230,138,.1)"/>
+                <line x1="400" y1="130" x2="380" y2="230" stroke="rgba(0,230,138,.1)"/>
+                <line x1="400" y1="130" x2="450" y2="230" stroke="rgba(255,214,68,.1)"/>
+                <line x1="530" y1="130" x2="530" y2="230" stroke="rgba(255,77,106,.1)"/>
+              </g>
+
+              <!-- Top: VShield Core -->
+              <rect x="240" y="20" width="120" height="48" rx="10" fill="#11141e" stroke="url(#shieldG)" stroke-width="1.5" filter="url(#glow)"/>
+              <text x="300" y="40" text-anchor="middle" fill="#ff7a45" font-family="IBM Plex Mono" font-size="9" font-weight="600" letter-spacing="1">VSHIELD</text>
+              <text x="300" y="54" text-anchor="middle" fill="rgba(240,242,248,.4)" font-family="IBM Plex Mono" font-size="7">GOVERNANCE CORE</text>
+
+              <!-- Policy layer labels -->
+              <text x="10" y="98" fill="rgba(240,242,248,.15)" font-family="IBM Plex Mono" font-size="7" letter-spacing="1.5">POLICY LAYER</text>
+
+              <!-- Policy nodes -->
+              <rect x="40" y="110" width="120" height="40" rx="6" fill="#11141e" stroke="rgba(255,77,106,.2)" stroke-width="1"/>
+              <text x="100" y="127" text-anchor="middle" fill="#ff4d6a" font-family="IBM Plex Mono" font-size="8" font-weight="500">DATA PROTECTION</text>
+              <text x="100" y="140" text-anchor="middle" fill="rgba(240,242,248,.3)" font-family="IBM Plex Mono" font-size="7">PII / Exfil Guard</text>
+
+              <rect x="190" y="110" width="120" height="40" rx="6" fill="#11141e" stroke="rgba(110,86,255,.2)" stroke-width="1"/>
+              <text x="250" y="127" text-anchor="middle" fill="#6e56ff" font-family="IBM Plex Mono" font-size="8" font-weight="500">IDENTITY</text>
+              <text x="250" y="140" text-anchor="middle" fill="rgba(240,242,248,.3)" font-family="IBM Plex Mono" font-size="7">Priv Escalation Block</text>
+
+              <rect x="340" y="110" width="120" height="40" rx="6" fill="#11141e" stroke="rgba(0,212,255,.2)" stroke-width="1"/>
+              <text x="400" y="127" text-anchor="middle" fill="#00d4ff" font-family="IBM Plex Mono" font-size="8" font-weight="500">TOOL ACCESS</text>
+              <text x="400" y="140" text-anchor="middle" fill="rgba(240,242,248,.3)" font-family="IBM Plex Mono" font-size="7">Scope Enforcement</text>
+
+              <rect x="480" y="110" width="100" height="40" rx="6" fill="#11141e" stroke="rgba(255,214,68,.2)" stroke-width="1"/>
+              <text x="530" y="127" text-anchor="middle" fill="#ffd644" font-family="IBM Plex Mono" font-size="8" font-weight="500">RATE LIMITS</text>
+              <text x="530" y="140" text-anchor="middle" fill="rgba(240,242,248,.3)" font-family="IBM Plex Mono" font-size="7">Execution Caps</text>
+
+              <!-- Agent layer label -->
+              <text x="10" y="198" fill="rgba(240,242,248,.15)" font-family="IBM Plex Mono" font-size="7" letter-spacing="1.5">AGENT LAYER</text>
+
+              <!-- Agent nodes -->
+              <rect x="25" y="210" width="70" height="44" rx="6" fill="#11141e" stroke="rgba(0,230,138,.25)" stroke-width="1"/>
+              <circle cx="40" cy="224" r="3" fill="#00e68a"/>
+              <text x="48" y="227" fill="var(--w80)" font-family="DM Sans" font-size="8" font-weight="600">SOC-01</text>
+              <text x="60" y="243" text-anchor="middle" fill="rgba(0,230,138,.6)" font-family="IBM Plex Mono" font-size="7">HIGH</text>
+
+              <rect x="105" y="210" width="70" height="44" rx="6" fill="#11141e" stroke="rgba(0,230,138,.25)" stroke-width="1"/>
+              <circle cx="120" cy="224" r="3" fill="#00e68a"/>
+              <text x="128" y="227" fill="var(--w80)" font-family="DM Sans" font-size="8" font-weight="600">IAM-Rot</text>
+              <text x="140" y="243" text-anchor="middle" fill="rgba(0,230,138,.6)" font-family="IBM Plex Mono" font-size="7">HIGH</text>
+
+              <rect x="185" y="210" width="70" height="44" rx="6" fill="#11141e" stroke="rgba(0,230,138,.25)" stroke-width="1"/>
+              <circle cx="200" cy="224" r="3" fill="#00e68a"/>
+              <text x="208" y="227" fill="var(--w80)" font-family="DM Sans" font-size="8" font-weight="600">DLP-Mon</text>
+              <text x="220" y="243" text-anchor="middle" fill="rgba(0,230,138,.6)" font-family="IBM Plex Mono" font-size="7">HIGH</text>
+
+              <rect x="265" y="210" width="70" height="44" rx="6" fill="#11141e" stroke="rgba(0,230,138,.25)" stroke-width="1"/>
+              <circle cx="280" cy="224" r="3" fill="#00e68a"/>
+              <text x="288" y="227" fill="var(--w80)" font-family="DM Sans" font-size="8" font-weight="600">Vuln-Pri</text>
+              <text x="300" y="243" text-anchor="middle" fill="rgba(0,230,138,.6)" font-family="IBM Plex Mono" font-size="7">HIGH</text>
+
+              <rect x="345" y="210" width="70" height="44" rx="6" fill="#11141e" stroke="rgba(0,230,138,.25)" stroke-width="1"/>
+              <circle cx="360" cy="224" r="3" fill="#00e68a"/>
+              <text x="368" y="227" fill="var(--w80)" font-family="DM Sans" font-size="8" font-weight="600">CldScan</text>
+              <text x="380" y="243" text-anchor="middle" fill="rgba(0,230,138,.6)" font-family="IBM Plex Mono" font-size="7">HIGH</text>
+
+              <rect x="425" y="210" width="70" height="44" rx="6" fill="#11141e" stroke="rgba(255,214,68,.25)" stroke-width="1"/>
+              <circle cx="440" cy="224" r="3" fill="#ffd644"/>
+              <text x="448" y="227" fill="var(--w80)" font-family="DM Sans" font-size="8" font-weight="600">ML-Pipe</text>
+              <text x="460" y="243" text-anchor="middle" fill="rgba(255,214,68,.6)" font-family="IBM Plex Mono" font-size="7">MED</text>
+
+              <rect x="505" y="210" width="70" height="44" rx="6" fill="#11141e" stroke="rgba(255,77,106,.25)" stroke-width="1"/>
+              <circle cx="520" cy="224" r="3" fill="#ff4d6a"/>
+              <text x="528" y="227" fill="var(--w80)" font-family="DM Sans" font-size="8" font-weight="600">Test-X</text>
+              <text x="540" y="243" text-anchor="middle" fill="rgba(255,77,106,.6)" font-family="IBM Plex Mono" font-size="7">LOW</text>
+
+              <!-- Block indicator on Test-X -->
+              <rect x="548" y="208" width="30" height="14" rx="3" fill="rgba(255,77,106,.1)" stroke="rgba(255,77,106,.3)" stroke-width=".5"/>
+              <text x="563" y="218" text-anchor="middle" fill="#ff4d6a" font-family="IBM Plex Mono" font-size="6" font-weight="600">5 BLOCKED</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Right: Policy enforcement table + Audit -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="panel">
+            <div class="panel-h">
+              <div class="panel-t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>Runtime Policies</div>
+              <div class="panel-a">Manage →</div>
+            </div>
+            <div style="padding:0">
+              <table class="tbl">
+                <thead><tr><th>Policy</th><th>Status</th><th>Blocks</th></tr></thead>
+                <tbody>
+                  <tr><td style="color:var(--w80)">PII Data Exfiltration</td><td><span class="tag tag-on">Active</span></td><td style="color:var(--red);font-family:var(--mono);font-size:11px">8</td></tr>
+                  <tr><td style="color:var(--w80)">Privilege Escalation</td><td><span class="tag tag-on">Active</span></td><td style="color:var(--red);font-family:var(--mono);font-size:11px">5</td></tr>
+                  <tr><td style="color:var(--w80)">Unauthorized Tool Access</td><td><span class="tag tag-on">Active</span></td><td style="color:var(--orange);font-family:var(--mono);font-size:11px">4</td></tr>
+                  <tr><td style="color:var(--w80)">Cross-Tenant Data Flow</td><td><span class="tag tag-on">Active</span></td><td style="color:var(--orange);font-family:var(--mono);font-size:11px">3</td></tr>
+                  <tr><td style="color:var(--w80)">Execution Rate Limiter</td><td><span class="tag tag-on">Active</span></td><td style="font-family:var(--mono);font-size:11px">2</td></tr>
+                  <tr><td style="color:var(--w80)">MCP Server Auth</td><td><span class="tag tag-on">Active</span></td><td style="font-family:var(--mono);font-size:11px">1</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel" style="flex:1">
+            <div class="panel-h">
+              <div class="panel-t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>Recent Audit Events</div>
+              <div class="panel-a">Full Log →</div>
+            </div>
+            <div style="padding:8px 14px">
+              <div class="log"><span class="log-t">14:33:21</span><span class="log-l block">block</span><span class="log-m">PII exfil attempt — <b style="color:var(--w80)">SOC-01</b> → ext-api</span></div>
+              <div class="log"><span class="log-t">14:32:58</span><span class="log-l allow">allow</span><span class="log-m">Cred rotation approved — <b style="color:var(--w80)">IAM-Rot</b></span></div>
+              <div class="log"><span class="log-t">14:32:14</span><span class="log-l warn">warn</span><span class="log-m">Rate limit 82% — Cloud-Scanner</span></div>
+              <div class="log"><span class="log-t">14:31:47</span><span class="log-l block">block</span><span class="log-m">Priv escalation denied — <b style="color:var(--w80)">Test-X</b></span></div>
+              <div class="log"><span class="log-t">14:31:02</span><span class="log-l audit">audit</span><span class="log-m">Policy update: MCP auth v2.1 deployed</span></div>
+              <div class="log"><span class="log-t">14:30:44</span><span class="log-l block">block</span><span class="log-m">Unauth tool call — <b style="color:var(--w80)">Test-X</b> → prod-db</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+
+<script>
+// ═══ LIVE AUDIT STREAM ═══
+(function(){
+  const AUDITS=[
+    {level:"BLOCK",msg:"PII exfil attempt — <b style='color:var(--w80)'>SOC-01</b> → ext-api",color:"var(--red)"},
+    {level:"ALLOW",msg:"Cred rotation approved — <b style='color:var(--w80)'>IAM-Rot</b>",color:"var(--green)"},
+    {level:"WARN",msg:"Rate limit 82% — Cloud-Scanner",color:"var(--yellow)"},
+    {level:"BLOCK",msg:"Priv escalation denied — <b style='color:var(--w80)'>Test-X</b>",color:"var(--red)"},
+    {level:"AUDIT",msg:"Policy update: MCP auth v2.1 deployed",color:"var(--cyan)"},
+    {level:"BLOCK",msg:"Unauth tool call — <b style='color:var(--w80)'>Test-X</b> → prod-db",color:"var(--red)"},
+    {level:"ALLOW",msg:"DLP scan completed — S3 bucket-047",color:"var(--green)"},
+  ];
+  const container=document.querySelector('[style*="padding:8px 14px"]') || document.querySelector('[style*="padding: 8px 14px"]');
+  if(!container)return;
+  setInterval(()=>{
+    const t=AUDITS[Math.floor(Math.random()*AUDITS.length)];
+    const now=new Date().toLocaleTimeString('en-GB',{hour12:false});
+    const el=document.createElement('div');
+    el.className='log';
+    el.style.cssText='font-family:var(--mono);font-size:10.5px;padding:5px 0;border-bottom:1px solid var(--w04);display:flex;gap:10px;line-height:1.5';
+    el.innerHTML='<span style="color:var(--w20);width:60px;flex-shrink:0">'+now+'</span><span style="color:'+t.color+';width:44px;flex-shrink:0;font-size:8.5px;letter-spacing:.5px;text-transform:uppercase">'+t.level+'</span><span style="flex:1;color:var(--w60)">'+t.msg+'</span>';
+    const logs=container.querySelectorAll('.log');
+    if(logs.length>0)container.insertBefore(el,logs[0]);
+    else container.appendChild(el);
+    if(container.querySelectorAll('.log').length>7)container.removeChild(container.lastElementChild);
+  },3500+Math.random()*2500);
+})();
+
+// ═══ LIVE BLOCKED COUNTER ═══
+(function(){
+  const statVals=document.querySelectorAll('.stat-val');
+  const blockedStat=Array.from(statVals).find(el=>el.textContent.trim()==='23');
+  if(!blockedStat)return;
+  let count=23;
+  setInterval(()=>{
+    if(Math.random()>0.7){count++;blockedStat.textContent=count;blockedStat.style.transition='color .3s';blockedStat.style.color='#fff';setTimeout(()=>{blockedStat.style.color='var(--red)'},300)}
+  },6000);
+})();
+</script>
