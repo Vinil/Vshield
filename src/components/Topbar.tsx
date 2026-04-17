@@ -1,21 +1,40 @@
+import { NavLink, useLocation } from 'react-router-dom';
 import { IconBell } from './Icons';
 
-const tabs = [
-  { id: 'guardrails',    label: 'Guardrails' },
-  { id: 'policy-engine', label: 'Policy Engine' },
-  { id: 'identity',      label: 'Identity' },
-  { id: 'agent-scope',   label: 'Agent Scope' },
-  { id: 'audit-log',     label: 'Audit Log' },
-  { id: 'governance',    label: 'Governance' },
+interface Tab {
+  to: string;
+  label: string;
+  // Extra paths that should light this tab as active.
+  alsoMatch?: string[];
+}
+
+const tabs: Tab[] = [
+  { to: '/',              label: 'Guardrails',    alsoMatch: ['/blocked', '/config'] },
+  { to: '/policy-engine', label: 'Policy Engine' },
+  { to: '/identity',      label: 'Identity' },
+  { to: '/agents',        label: 'Agent Scope' },
+  { to: '/audit',         label: 'Audit Log' },
+  { to: '/compliance',    label: 'Governance',    alsoMatch: ['/reports'] },
 ];
 
-export default function Topbar({ active = 'guardrails' }: { active?: string }) {
+export default function Topbar() {
+  const { pathname } = useLocation();
   return (
     <div className="tb">
       <div className="tb-nav">
-        {tabs.map(t => (
-          <a key={t.id} href="#" className={t.id === active ? 'active' : ''}>{t.label}</a>
-        ))}
+        {tabs.map(t => {
+          const matchesExtra = t.alsoMatch?.includes(pathname) ?? false;
+          return (
+            <NavLink
+              key={t.to}
+              to={t.to}
+              end={t.to === '/'}
+              className={({ isActive }) => (isActive || matchesExtra ? 'active' : '')}
+            >
+              {t.label}
+            </NavLink>
+          );
+        })}
       </div>
       <div className="tb-r">
         <div className="bell"><IconBell /><div className="bell-dot" /></div>
